@@ -90,10 +90,22 @@ open class NSCache<KeyType : AnyObject, ObjectType : AnyObject> : NSObject {
     private func remove(_ entry: NSCacheEntry<KeyType, ObjectType>) {
         let oldPrev = entry.prevByCost
         let oldNext = entry.nextByCost
-        
+
+        //
+        // oldPrev
+        // ㅁ -> ㅁ -> ㅁ
+        // ㅁ <- ㅁ <- ㅁ
+        //            oldNext
+
         oldPrev?.nextByCost = oldNext
         oldNext?.prevByCost = oldPrev
-        
+
+        // oldPrev
+        // ㅁ -------> ㅁ
+        // ㅁ <------- ㅁ
+        //             oldNext
+        // remove NSCacheEntry(Node)
+
         if entry === _head {
             _head = oldNext
         }
@@ -140,27 +152,34 @@ open class NSCache<KeyType : AnyObject, ObjectType : AnyObject> : NSObject {
         _lock.lock()
         
         let costDiff: Int
-        
+
+        // 현재  _entries에 값이 존재
         if let entry = _entries[keyRef] {
             costDiff = g - entry.cost
             entry.cost = g
             
             entry.value = obj
-            
+
+            // cost가 설정되어 있는 경우
             if costDiff != 0 {
+                // 기존 값 제거 후, 새로운 값 삽입
                 remove(entry)
                 insert(entry)
             }
         } else {
+            // 현재  _entries에 값이 없음
             let entry = NSCacheEntry(key: key, value: obj, cost: g)
             _entries[keyRef] = entry
+
+            // 새로운 값 삽입
             insert(entry)
             
             costDiff = g
         }
         
         _totalCost += costDiff
-        
+
+        /// CostLimit에 기반하여 데이터 제거(Purging)
         var purgeAmount = (totalCostLimit > 0) ? (_totalCost - totalCostLimit) : 0
         while purgeAmount > 0 {
             if let entry = _head {
@@ -175,7 +194,8 @@ open class NSCache<KeyType : AnyObject, ObjectType : AnyObject> : NSObject {
                 break
             }
         }
-        
+
+        /// CountLimit에 기반하여 데이터 제거(Purging)
         var purgeCount = (countLimit > 0) ? (_entries.count - countLimit) : 0
         while purgeCount > 0 {
             if let entry = _head {
