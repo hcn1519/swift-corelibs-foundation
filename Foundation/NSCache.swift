@@ -130,12 +130,21 @@ open class NSCache<KeyType : AnyObject, ObjectType : AnyObject> : NSObject {
             _head = entry
             return
         }
-        
+
+        // order by cost
+        // ex) 1 -> 2 -> 10, insert cost 5
+        // Loop 1.
+        // currentElement = 1
+        // nextByCost.cost = 2
+        // Loop 2.
+        // currentElement = 2
+        // nextByCost.cost = 10
         while let nextByCost = currentElement.nextByCost, nextByCost.cost < entry.cost {
             currentElement = nextByCost
         }
         
         // Insert entry between currentElement and nextElement
+        // result - 1 -> 2 -> 5 -> 10(cost)
         let nextElement = currentElement.nextByCost
         
         currentElement.nextByCost = entry
@@ -180,11 +189,13 @@ open class NSCache<KeyType : AnyObject, ObjectType : AnyObject> : NSObject {
         _totalCost += costDiff
 
         /// CostLimit에 기반하여 데이터 제거(Purging)
+        // purgeAmount = 줄여야 하는 cost의 총량
         var purgeAmount = (totalCostLimit > 0) ? (_totalCost - totalCostLimit) : 0
         while purgeAmount > 0 {
             if let entry = _head {
                 delegate?.cache(unsafeDowncast(self, to:NSCache<AnyObject, AnyObject>.self), willEvictObject: entry.value)
-                
+
+                // 작은 cost의 데이터들부터 제거해나감
                 _totalCost -= entry.cost
                 purgeAmount -= entry.cost
                 
